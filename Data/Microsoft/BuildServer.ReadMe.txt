@@ -1,0 +1,157 @@
+The traces were collected over a 24 hour period which captures complete build process as well as idle time.
+
+Contact Name:   Vishal Sharda, Swaroop Kavalanekar, Bruce Worthington
+Contact Email:  Vishal.Sharda@microsoft.com, Swaroop.Kavalanekar@microsoft.com, Bruce.Worthington@microsoft.com
+Company:        Microsoft
+Trace events:   Primarily Disk IO (block level), File IO
+Duration:       96 trace files, 15 minutes each.
+OS:             Windows Server 2008
+Processors:     2 socket, quad-core
+Memory:         8 GB
+Disks:          eight 146 GB disks configured as RAID-0
+
+
+Disk- and File-related Trace Event Headers (found at beginning of file):
+
+               DiskRead,  TimeStamp,     Process Name ( PID),   ThreadID,             IrpPtr,   ByteOffset,     IOSize, ElapsedTime,  DiskNum, IrpFlags, DiskSvcTime, I/O Pri,  VolSnap,         FileObject, FileName
+              DiskWrite,  TimeStamp,     Process Name ( PID),   ThreadID,             IrpPtr,   ByteOffset,     IOSize, ElapsedTime,  DiskNum, IrpFlags, DiskSvcTime, I/O Pri,  VolSnap,         FileObject, FileName
+           DiskReadInit,  TimeStamp,     Process Name ( PID),   ThreadID,             IrpPtr
+          DiskWriteInit,  TimeStamp,     Process Name ( PID),   ThreadID,             IrpPtr
+              DiskFlush,  TimeStamp,     Process Name ( PID),   ThreadID,             IrpPtr,                           ElapsedTime,  DiskNum, IrpFlags, DiskSvcTime, I/O Pri
+          DiskFlushInit,  TimeStamp,     Process Name ( PID),   ThreadID,             IrpPtr
+
+           FileIoCreate,  TimeStamp,     Process Name ( PID),   ThreadID, CPU,             IrpPtr,         FileObject,    Options, Attributes,ShareAccess, FileName, ParsedOptions, ParsedAttributes, ParsedShareAccess
+          FileIoCleanup,  TimeStamp,     Process Name ( PID),   ThreadID, CPU,             IrpPtr,         FileObject, FileName
+            FileIoClose,  TimeStamp,     Process Name ( PID),   ThreadID, CPU,             IrpPtr,         FileObject, FileName
+            FileIoFlush,  TimeStamp,     Process Name ( PID),   ThreadID, CPU,             IrpPtr,         FileObject, FileName
+             FileIoRead,  TimeStamp,     Process Name ( PID),   ThreadID, CPU,             IrpPtr,         FileObject,   ByteOffset,       Size,      Flags, Priority, FileName, ParsedFlags
+            FileIoWrite,  TimeStamp,     Process Name ( PID),   ThreadID, CPU,             IrpPtr,         FileObject,   ByteOffset,       Size,      Flags, Priority, FileName, ParsedFlags
+          FileIoSetInfo,  TimeStamp,     Process Name ( PID),   ThreadID, CPU,             IrpPtr,         FileObject,          ExtraInfo, InfoClass, FileName
+        FileIoQueryInfo,  TimeStamp,     Process Name ( PID),   ThreadID, CPU,             IrpPtr,         FileObject,          ExtraInfo, InfoClass, FileName
+            FileIoFSCTL,  TimeStamp,     Process Name ( PID),   ThreadID, CPU,             IrpPtr,         FileObject,          ExtraInfo, InfoClass, FileName
+           FileIoDelete,  TimeStamp,     Process Name ( PID),   ThreadID, CPU,             IrpPtr,         FileObject,          ExtraInfo, InfoClass, FileName
+           FileIoRename,  TimeStamp,     Process Name ( PID),   ThreadID, CPU,             IrpPtr,         FileObject,          ExtraInfo, InfoClass, FileName
+          FileIoDirEnum,  TimeStamp,     Process Name ( PID),   ThreadID, CPU,             IrpPtr,         FileObject,  FileIndex,       Size,  InfoClass, FileName, FileName
+        FileIoDirNotify,  TimeStamp,     Process Name ( PID),   ThreadID, CPU,             IrpPtr,         FileObject,  FileIndex,       Size,  InfoClass, FileName, FileName
+            FileIoOpEnd,  TimeStamp,     Process Name ( PID),   ThreadID, CPU,             IrpPtr,         FileObject, ElapsedTime,     Status,          ExtraInfo, Type, FileName
+            HardFault,  TimeStamp,     Process Name ( PID),   ThreadID,VirtualAddr,   ByteOffset,     IOSize, ElapsedTime, FileObject, FileName, Hardfaulted Address Information
+
+
+Notes:
+  DiskReadInit and DiskWriteInit are redundant events -- all of their information can be extracted from the corresponding completion events (DiskRead and DiskWrite)
+  DiskFlush(Init) is generated to flush hardware caches (e.g., by FlushFileBuffers calls to the kernel)
+
+
+Primary fields of interest for storage workload research:
+
+  Timestamp:         Time from start of trace in microseconds
+  IrpPtr:            Virtual address of kernel data structure corresponding to a specific IO (can be used to link start events and completion events -- e.g., DiskReadStart and DiskRead)
+  ByteOffset:        Offset of request from start of disk in bytes for disk events and start of file in bytes for file events
+  IOSize, Size:      Size of request in bytes
+  ElapsedTime:       Time from start event to completion event for a specific IO in microseconds
+  DiskNum:           Physical disk number as viewed by Windows -- in this case each 14-disk RAID-0 array appears as a single drive
+  DiskServTime:      Ignore
+  I/O Pri, Priority: 4 levels of I/O priority are defined in Windows Server 2008
+  Obvious fields:  Process Name ( PID), ThreadID, CPU, FileName
+  Definitions of other trace event fields available from the authors (until the next Windows SDK is released in 1Q08, which should have a more complete disclosure of event fields).
+
+Below is some basic information about the traces:
+
+
+
+OS Version: 6.0.6001, Trace Size: 2069120KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128407848315052239, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-28-2007.08-40-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 604800KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128407857426623047, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-28-2007.08-55-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 3519488KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128407866558800898, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-28-2007.09-10-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 3147008KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128407875690819704, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-28-2007.09-26-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 2772224KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128407884809078154, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-28-2007.09-41-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 3033856KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128407893922188571, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-28-2007.09-56-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 3780224KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128407903044191045, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-28-2007.10-11-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 2989824KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128407912160109480, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-28-2007.10-26-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 2347136KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128407921313936158, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-28-2007.10-42-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 3411072KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128407930442022671, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-28-2007.10-57-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 470144KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128407939593041331, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-28-2007.11-12-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 259840KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128407948754668059, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-28-2007.11-27-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 1216256KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128407957907558731, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-28-2007.11-43-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 3813120KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128407967070433467, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-28-2007.11-58-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 10496KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408439161234736, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.01-05-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 2404480KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408012609777384, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.01-14-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 11904KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408448235032901, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.01-20-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 2002688KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408021702139668, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.01-29-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 17408KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408457308831066, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.01-35-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 776832KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408030796529965, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.01-44-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 9728KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408466382941233, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.01-50-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 682752KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408039875008160, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.01-59-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 12672KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408475456739398, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.02-05-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 24192KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408048950366335, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.02-14-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 9728KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408484531005566, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.02-20-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 115328KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408058025724510, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.02-30-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 10368KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408493604803731, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.02-36-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 12544KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408067110442745, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.02-45-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 13696KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408502678445895, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.02-51-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 54528KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408076181276891, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.03-00-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 14976KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408511752244060, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.03-06-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 69888KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408085259599085, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.03-15-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 12800KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408520830181765, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.03-21-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 211584KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408094356173396, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.03-30-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 10240KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408529904478432, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.03-36-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 12416KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408103430439564, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.03-45-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 9472KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408538977964107, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.03-51-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 12288KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408112504237729, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.04-00-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 11264KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408548051138268, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.04-06-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 9856KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408121578035894, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.04-15-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 68096KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408557124624431, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.04-21-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 10624KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408130651834059, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.04-31-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 162688KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408566199202601, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.04-36-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 25600KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408139725320222, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.04-46-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 179968KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408575278616802, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.04-52-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 18176KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408148799586390, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.05-01-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 17664KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408584367079061, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.05-07-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 9728KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408157873384555, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.05-16-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 9728KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408593440877226, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.05-22-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 20224KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408166947338721, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.05-31-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 10496KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408602514519390, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.05-37-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 32384KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408176020980885, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.05-46-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 9856KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408611588317555, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.05-52-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 23808KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408185094584600, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.06-01-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 19200KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408620661959719, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.06-07-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 48768KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408194166735770, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.06-16-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 14080KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408629735601883, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.06-22-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 54400KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408203241390439, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.06-32-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 13056KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408638809088046, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.06-38-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 23296KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408212315344605, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.06-47-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 14720KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408647882730210, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.06-53-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 22784KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408221388986769, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.07-02-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 11008KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408656956372374, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.07-08-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 19072KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408230463408938, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.07-17-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 9728KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408666030014538, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.07-23-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 22656KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408239537207103, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.07-32-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 18048KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408248611161269, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.07-47-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 14976KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408257684959434, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.08-02-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 9600KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408266758757599, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.08-17-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 12672KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408275832555764, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.08-33-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 11520KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408284906041927, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.08-48-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 10112KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408293979840092, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.09-03-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 16384KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408303053638257, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.09-18-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 10752KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408312127280421, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.09-33-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 9600KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408321200922585, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.09-48-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 14848KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408330274564749, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.10-03-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 9600KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408339348518915, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.10-18-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 10240KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408348422161079, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.10-34-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 15744KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408357495803243, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.10-49-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 10624KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408366569445407, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.11-04-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 12800KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408375642931570, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.11-19-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 12672KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408384716417733, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.11-34-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 9600KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408393790995903, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.11-49-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 10240KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408402865106070, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.12-04-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 448000KB, Events Lost: 14445805, Buffers lost: 0, Trace Start: 128407976199767988, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.12-13-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 10624KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408411938748234, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.12-19-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 1615360KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128407985301490332, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.12-28-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 10240KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408421013950408, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.12-35-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 2891264KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128407994408828712, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.12-44-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 16640KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408430087748573, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.12-50-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 4014208KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128408003511175060, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-29-2007.12-59-AM.trace.etl
+OS Version: 6.0.6001, Trace Size: 10112KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128407802885377025, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-28-2007.07-24-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 33920KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128407811968691251, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-28-2007.07-39-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 1235328KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128407821042489416, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-28-2007.07-55-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 1289344KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128407830120343607, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-28-2007.08-10-PM.trace.etl
+OS Version: 6.0.6001, Trace Size: 2154624KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128407839216293914, Trace Length: 15 min, PointerSize: 8, Trace Name: 24.hour.BuildServer.11-28-2007.08-25-PM.trace.etl

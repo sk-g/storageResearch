@@ -1,0 +1,94 @@
+The traces were collected for MSN Storage metadata server for a duration of 6-hours
+
+Contact Name:   Vishal Sharda, Swaroop Kavalanekar, Bruce Worthington
+Contact Email:  Vishal.Sharda@microsoft.com, Swaroop.Kavalanekar@microsoft.com, Bruce.Worthington@microsoft.com
+Company:        Microsoft
+Trace events:   Primarily Disk IO (block level), File IO
+Duration:       36 trace files, 10 minutes each.
+OS:             Windows Server 2003
+
+
+Disk- and File-related Trace Event Headers (found at beginning of file):
+
+               DiskRead,  TimeStamp,     Process Name ( PID),   ThreadID,             IrpPtr,   ByteOffset,     IOSize, ElapsedTime,  DiskNum, IrpFlags, DiskSvcTime, I/O Pri,  VolSnap,         FileObject, FileName
+              DiskWrite,  TimeStamp,     Process Name ( PID),   ThreadID,             IrpPtr,   ByteOffset,     IOSize, ElapsedTime,  DiskNum, IrpFlags, DiskSvcTime, I/O Pri,  VolSnap,         FileObject, FileName
+           DiskReadInit,  TimeStamp,     Process Name ( PID),   ThreadID,             IrpPtr
+          DiskWriteInit,  TimeStamp,     Process Name ( PID),   ThreadID,             IrpPtr
+              DiskFlush,  TimeStamp,     Process Name ( PID),   ThreadID,             IrpPtr,                           ElapsedTime,  DiskNum, IrpFlags, DiskSvcTime, I/O Pri
+          DiskFlushInit,  TimeStamp,     Process Name ( PID),   ThreadID,             IrpPtr
+
+           FileIoCreate,  TimeStamp,     Process Name ( PID),   ThreadID, CPU,             IrpPtr,         FileObject,    Options, Attributes,ShareAccess, FileName, ParsedOptions, ParsedAttributes, ParsedShareAccess
+          FileIoCleanup,  TimeStamp,     Process Name ( PID),   ThreadID, CPU,             IrpPtr,         FileObject, FileName
+            FileIoClose,  TimeStamp,     Process Name ( PID),   ThreadID, CPU,             IrpPtr,         FileObject, FileName
+            FileIoFlush,  TimeStamp,     Process Name ( PID),   ThreadID, CPU,             IrpPtr,         FileObject, FileName
+             FileIoRead,  TimeStamp,     Process Name ( PID),   ThreadID, CPU,             IrpPtr,         FileObject,   ByteOffset,       Size,      Flags, Priority, FileName, ParsedFlags
+            FileIoWrite,  TimeStamp,     Process Name ( PID),   ThreadID, CPU,             IrpPtr,         FileObject,   ByteOffset,       Size,      Flags, Priority, FileName, ParsedFlags
+          FileIoSetInfo,  TimeStamp,     Process Name ( PID),   ThreadID, CPU,             IrpPtr,         FileObject,          ExtraInfo, InfoClass, FileName
+        FileIoQueryInfo,  TimeStamp,     Process Name ( PID),   ThreadID, CPU,             IrpPtr,         FileObject,          ExtraInfo, InfoClass, FileName
+            FileIoFSCTL,  TimeStamp,     Process Name ( PID),   ThreadID, CPU,             IrpPtr,         FileObject,          ExtraInfo, InfoClass, FileName
+           FileIoDelete,  TimeStamp,     Process Name ( PID),   ThreadID, CPU,             IrpPtr,         FileObject,          ExtraInfo, InfoClass, FileName
+           FileIoRename,  TimeStamp,     Process Name ( PID),   ThreadID, CPU,             IrpPtr,         FileObject,          ExtraInfo, InfoClass, FileName
+          FileIoDirEnum,  TimeStamp,     Process Name ( PID),   ThreadID, CPU,             IrpPtr,         FileObject,  FileIndex,       Size,  InfoClass, FileName, FileName
+        FileIoDirNotify,  TimeStamp,     Process Name ( PID),   ThreadID, CPU,             IrpPtr,         FileObject,  FileIndex,       Size,  InfoClass, FileName, FileName
+            FileIoOpEnd,  TimeStamp,     Process Name ( PID),   ThreadID, CPU,             IrpPtr,         FileObject, ElapsedTime,     Status,          ExtraInfo, Type, FileName
+            HardFault,  TimeStamp,     Process Name ( PID),   ThreadID,VirtualAddr,   ByteOffset,     IOSize, ElapsedTime, FileObject, FileName, Hardfaulted Address Information
+
+
+Notes:
+  DiskReadInit and DiskWriteInit are redundant events -- all of their information can be extracted from the corresponding completion events (DiskRead and DiskWrite)
+  DiskFlush(Init) is generated to flush hardware caches (e.g., by FlushFileBuffers calls to the kernel)
+
+
+Primary fields of interest for storage workload research:
+
+  Timestamp:         Time from start of trace in microseconds
+  IrpPtr:            Virtual address of kernel data structure corresponding to a specific IO (can be used to link start events and completion events -- e.g., DiskReadStart and DiskRead)
+  ByteOffset:        Offset of request from start of disk in bytes for disk events and start of file in bytes for file events
+  IOSize, Size:      Size of request in bytes
+  ElapsedTime:       Time from start event to completion event for a specific IO in microseconds
+  DiskNum:           Physical disk number as viewed by Windows -- in this case each 14-disk RAID-0 array appears as a single drive
+  DiskServTime:      Ignore
+  I/O Pri, Priority: 4 levels of I/O priority are defined in Windows Server 2008
+  Obvious fields:  Process Name ( PID), ThreadID, CPU, FileName
+  Definitions of other trace event fields available from the authors (until the next Windows SDK is released in 1Q08, which should have a more complete disclosure of event fields).
+
+Below is some basic information about the traces:
+
+
+
+OS Version: 5.2.3790, Trace Size: 37504KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496531900364981, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.01-06.trace.etl
+OS Version: 5.2.3790, Trace Size: 38528KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496537985834189, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.01-16.trace.etl
+OS Version: 5.2.3790, Trace Size: 38784KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496544067553493, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.01-26.trace.etl
+OS Version: 5.2.3790, Trace Size: 38784KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496550150679011, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.01-36.trace.etl
+OS Version: 5.2.3790, Trace Size: 37888KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496556235366989, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.01-47.trace.etl
+OS Version: 5.2.3790, Trace Size: 36480KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496562319742475, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.01-57.trace.etl
+OS Version: 5.2.3790, Trace Size: 35584KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496568402867993, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.02-07.trace.etl
+OS Version: 5.2.3790, Trace Size: 38144KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496574484587297, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.02-17.trace.etl
+OS Version: 5.2.3790, Trace Size: 36864KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496580566775339, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.02-27.trace.etl
+OS Version: 5.2.3790, Trace Size: 34816KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496586649900857, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.02-37.trace.etl
+OS Version: 5.2.3790, Trace Size: 34816KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496592736307541, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.02-47.trace.etl
+OS Version: 5.2.3790, Trace Size: 33792KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496598820839273, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.02-58.trace.etl
+OS Version: 5.2.3790, Trace Size: 33664KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496604902714823, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.03-08.trace.etl
+OS Version: 5.2.3790, Trace Size: 33280KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496610988965261, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.03-18.trace.etl
+OS Version: 5.2.3790, Trace Size: 33280KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496617073496993, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.03-28.trace.etl
+OS Version: 5.2.3790, Trace Size: 32256KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496623155997527, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.03-38.trace.etl
+OS Version: 5.2.3790, Trace Size: 32000KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496629237091847, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.03-48.trace.etl
+OS Version: 5.2.3790, Trace Size: 30976KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496635322092317, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.03-58.trace.etl
+OS Version: 5.2.3790, Trace Size: 29824KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496641406155311, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.04-09.trace.etl
+OS Version: 5.2.3790, Trace Size: 29568KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496647488655845, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.04-19.trace.etl
+OS Version: 5.2.3790, Trace Size: 28672KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496653571312625, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.04-29.trace.etl
+OS Version: 5.2.3790, Trace Size: 28800KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496659652875683, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.04-39.trace.etl
+OS Version: 5.2.3790, Trace Size: 28160KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496665736001201, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.04-49.trace.etl
+OS Version: 5.2.3790, Trace Size: 27520KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496671817251767, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.04-59.trace.etl
+OS Version: 5.2.3790, Trace Size: 384KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496677899127317, Trace Length: unknown, PointerSize: 4, Trace Name: CFS.2008-03-10.05-09.trace.etl
+OS Version: 5.2.3790, Trace Size: 27008KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496683981002867, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.05-19.trace.etl
+OS Version: 5.2.3790, Trace Size: 27904KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496690062097187, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.05-30.trace.etl
+OS Version: 5.2.3790, Trace Size: 29184KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496696145691443, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.05-40.trace.etl
+OS Version: 5.2.3790, Trace Size: 29952KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496702227566993, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.05-50.trace.etl
+OS Version: 5.2.3790, Trace Size: 28416KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496708310536265, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.06-00.trace.etl
+OS Version: 5.2.3790, Trace Size: 28544KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496714393193045, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.06-10.trace.etl
+OS Version: 5.2.3790, Trace Size: 28672KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496720484443355, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.06-20.trace.etl
+OS Version: 5.2.3790, Trace Size: 28928KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496726566006413, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.06-30.trace.etl
+OS Version: 5.2.3790, Trace Size: 27520KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496732648819439, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.06-41.trace.etl
+OS Version: 5.2.3790, Trace Size: 26752KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496738733819909, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.06-51.trace.etl
+OS Version: 5.2.3790, Trace Size: 32768KB, Events Lost: 0, Buffers lost: 0, Trace Start: 128496525816145741, Trace Length: 10 min, PointerSize: 4, Trace Name: CFS.2008-03-10.12-56.trace.etl
